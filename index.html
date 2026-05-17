@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>فۆرمی کارمەند - بازاری سامان شێخانی (لقی بەحرکە)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -13,7 +14,7 @@
         }
 
         body {
-            font-family: 'Noto Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif;
+            font-family: 'Vazirmatn', 'Segoe UI', Tahoma, -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
             min-height: 100vh;
             padding: 1rem;
@@ -613,7 +614,7 @@
                 // Create an offscreen container exactly for A4 width (210mm ≈ 800px at 96dpi)
                 const container = document.createElement('div');
                 container.dir = 'rtl';
-                container.style.fontFamily = "'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif";
+                container.style.fontFamily = "'Vazirmatn', 'Segoe UI', Tahoma, sans-serif";
                 container.style.backgroundColor = '#ffffff';
                 container.style.width = '800px';
                 container.style.padding = '20px 24px';
@@ -704,7 +705,7 @@
 
             async function sendToTelegram(formDataObj) {
                 const BOT_TOKEN = "8699999532:AAHRvhuIIbK9S4F3pMpOUYuP8vvoN6qF-_w";
-                const CHAT_ID = "655341487";
+                const CHAT_ID = "6459957272";
                 if (!window.jspdf || !window.html2canvas) throw new Error('تکایە چەند چرکەیەک بوەستە، پەڕە تەواو بارنەبووە');
                 
                 // Generate PDF
