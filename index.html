@@ -625,9 +625,21 @@
 
                 // Build HTML content – optimized to fit in one A4 page
                 const hasExpVal = formData.hasExperience === 'بەڵێ';
+                // Preload images for iOS Safari compatibility
+                async function preloadImage(src) {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => resolve(img);
+                        img.onerror = () => resolve(null);
+                        img.src = src;
+                    });
+                }
+                const preloadedPersonal = personalPhotoBase64 ? await preloadImage(personalPhotoBase64) : null;
+                const preloadedId = idCardPhotoBase64 ? await preloadImage(idCardPhotoBase64) : null;
+
                 const photosHtml = [];
-                if (personalPhotoBase64) photosHtml.push(`<div style="width:100%; margin-top:12px; text-align:center;"><strong style="font-size:10px;">📸 وێنەی تاکەکەسی</strong><br><img src="${personalPhotoBase64}" style="max-width:100%; max-height:140px; border-radius:12px; border:1px solid #ddd;"></div>`);
-                if (idCardPhotoBase64) photosHtml.push(`<div style="width:100%; margin-top:12px; text-align:center;"><strong style="font-size:10px;">🪪 کارتی نیشتیمانی</strong><br><img src="${idCardPhotoBase64}" style="max-width:100%; max-height:140px; border-radius:12px; border:1px solid #ddd;"></div>`);
+                if (personalPhotoBase64) photosHtml.push(`<div style="width:100%; margin-top:12px; text-align:center;"><strong style="font-size:10px;">📸 وێنەی تاکەکەسی</strong><br><img src="${personalPhotoBase64}" style="max-width:100%; max-height:140px; border-radius:12px; border:1px solid #ddd;" crossorigin="anonymous"></div>`);
+                if (idCardPhotoBase64) photosHtml.push(`<div style="width:100%; margin-top:12px; text-align:center;"><strong style="font-size:10px;">🪪 کارتی نیشتیمانی</strong><br><img src="${idCardPhotoBase64}" style="max-width:100%; max-height:140px; border-radius:12px; border:1px solid #ddd;" crossorigin="anonymous"></div>`);
 
                 container.innerHTML = `
                 <div style="text-align:center; margin-bottom:14px;">
@@ -668,13 +680,21 @@
                 container.style.position = 'absolute';
                 container.style.left = '-9999px';
                 container.style.top = '0';
-                await new Promise(r => setTimeout(r, 150));
+                await new Promise(r => setTimeout(r, 400));
 
                 const canvas = await html2canvas(container, {
                     scale: 2.2,
                     backgroundColor: '#ffffff',
                     logging: false,
-                    useCORS: true
+                    useCORS: true,
+                    allowTaint: true,
+                    imageTimeout: 15000,
+                    onclone: (clonedDoc) => {
+                        const imgs = clonedDoc.querySelectorAll('img[src^="data:"]');
+                        imgs.forEach((img) => {
+                            img.setAttribute('crossorigin', 'anonymous');
+                        });
+                    }
                 });
                 document.body.removeChild(container);
 
