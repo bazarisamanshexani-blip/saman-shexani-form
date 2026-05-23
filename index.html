@@ -168,11 +168,36 @@
             display: block;
             border: 1.5px dashed #cbd5e1;
             border-radius: 0.9rem;
-            padding: 0.5rem;
+            padding: 0.7rem 0.5rem;
             text-align: center;
             background: #fefce8;
             cursor: pointer;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
+            position: relative;
+            min-height: 36px;
+            -webkit-tap-highlight-color: rgba(16, 185, 129, 0.2);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .file-zone:active {
+            background: #fef3c7;
+        }
+
+        .file-input-hidden {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            opacity: 0;
+            cursor: pointer;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            -webkit-appearance: none;
+            font-size: 0 !important;
         }
 
         .preview-img {
@@ -364,18 +389,22 @@
                 </div>
                 <div class="two-cols">
                     <div class="input-group">
-                        <label>📸 وێنەی تاکەکەسی</label>
-                        <label class="file-zone" id="photoZone" for="personalPhoto"><span>📸 کرتە بکە بۆ هەڵبژاردن</span>
-                            <input type="file" id="personalPhoto" accept="image/jpeg,image/png,image/jpg,image/webp" style="display:none">
+                        <label>📸 وێنەی تاکەکەسی <span class="required">*</span></label>
+                        <label class="file-zone" id="photoZone">
+                            <span>📸 کرتە بکە بۆ هەڵبژاردن</span>
+                            <input type="file" id="personalPhoto" accept="image/*" class="file-input-hidden">
                         </label>
                         <img id="photoPreview" class="preview-img" style="display:none">
+                        <div class="error-text" id="error-personalPhoto"></div>
                     </div>
                     <div class="input-group">
-                        <label>🪪 وێنەی کارتی نیشتیمانی</label>
-                        <label class="file-zone" id="idZone" for="idCardPhoto"><span>🪪 کرتە بکە بۆ هەڵبژاردن</span>
-                            <input type="file" id="idCardPhoto" accept="image/jpeg,image/png,image/jpg,image/webp" style="display:none">
+                        <label>🪪 وێنەی کارتی نیشتیمانی <span class="required">*</span></label>
+                        <label class="file-zone" id="idZone">
+                            <span>🪪 کرتە بکە بۆ هەڵبژاردن</span>
+                            <input type="file" id="idCardPhoto" accept="image/*" class="file-input-hidden">
                         </label>
                         <img id="idPreview" class="preview-img" style="display:none">
+                        <div class="error-text" id="error-idCardPhoto"></div>
                     </div>
                 </div>
             </div>
@@ -507,40 +536,90 @@
             });
             communicationRadios.forEach(r => r.addEventListener('change', updateProgress));
 
-            photoZone.addEventListener('click', () => personalPhotoInput.click());
-            idZone.addEventListener('click', () => idCardPhotoInput.click());
+            // label[for=] already handles click — no extra JS needed
+
+            // Resize/compress image for iOS compatibility and smaller PDF
+            function processImageFile(file, callback, errorCallback) {
+                if (!file) { errorCallback && errorCallback('هیچ فایلێک هەڵنەبژێردراوە'); return; }
+                if (!file.type.startsWith('image/')) {
+                    errorCallback && errorCallback('تەنها وێنە قبوڵدەکرێت');
+                    return;
+                }
+                if (file.size > 10 * 1024 * 1024) {
+                    errorCallback && errorCallback('قەبارەی وێنە زۆر گەورەیە (زیاتر لە 10MB)');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onerror = () => errorCallback && errorCallback('هەڵە لە خوێندنەوەی فایل');
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onerror = () => errorCallback && errorCallback('هەڵە لە کردنەوەی وێنە');
+                    img.onload = () => {
+                        try {
+                            const maxDim = 1200;
+                            let w = img.width, h = img.height;
+                            if (w > maxDim || h > maxDim) {
+                                if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+                                else { w = Math.round(w * maxDim / h); h = maxDim; }
+                            }
+                            const canvas = document.createElement('canvas');
+                            canvas.width = w;
+                            canvas.height = h;
+                            const ctx = canvas.getContext('2d');
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, w, h);
+                            ctx.drawImage(img, 0, 0, w, h);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                            callback(dataUrl);
+                        } catch (err) {
+                            errorCallback && errorCallback('هەڵە لە پرۆسێسکردنی وێنە');
+                        }
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
 
             personalPhotoInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 5 * 1024 * 1024) { showToast("قەبارەی وێنە زۆر گەورەیە", true); return; }
-                    personalFileName = file.name;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        personalPhotoBase64 = ev.target.result;
-                        photoPreview.src = personalPhotoBase64;
-                        photoPreview.style.display = 'block';
-                        document.querySelector('#photoZone span').innerText = '✅ وێنە هەڵبژێردرا';
-                        updateProgress();
-                    };
-                    reader.readAsDataURL(file);
-                }
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                personalFileName = file.name;
+                document.querySelector('#photoZone span').innerText = '⏳ وێنە بار دەکرێت...';
+                processImageFile(file, (dataUrl) => {
+                    personalPhotoBase64 = dataUrl;
+                    photoPreview.src = dataUrl;
+                    photoPreview.style.display = 'block';
+                    document.querySelector('#photoZone span').innerText = '✅ وێنە بار کرا';
+                    const err = document.getElementById('error-personalPhoto');
+                    if (err) err.innerText = '';
+                    updateProgress();
+                }, (msg) => {
+                    showToast(msg, true);
+                    document.querySelector('#photoZone span').innerText = '📸 کرتە بکە بۆ هەڵبژاردن';
+                    personalPhotoBase64 = null;
+                    personalPhotoInput.value = '';
+                });
             });
+
             idCardPhotoInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 5 * 1024 * 1024) { showToast("قەبارەی کارت زۆر گەورەیە", true); return; }
-                    idCardFileName = file.name;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        idCardPhotoBase64 = ev.target.result;
-                        idPreview.src = idCardPhotoBase64;
-                        idPreview.style.display = 'block';
-                        document.querySelector('#idZone span').innerText = '✅ کارت هەڵبژێردرا';
-                        updateProgress();
-                    };
-                    reader.readAsDataURL(file);
-                }
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                idCardFileName = file.name;
+                document.querySelector('#idZone span').innerText = '⏳ وێنە بار دەکرێت...';
+                processImageFile(file, (dataUrl) => {
+                    idCardPhotoBase64 = dataUrl;
+                    idPreview.src = dataUrl;
+                    idPreview.style.display = 'block';
+                    document.querySelector('#idZone span').innerText = '✅ کارت بار کرا';
+                    const err = document.getElementById('error-idCardPhoto');
+                    if (err) err.innerText = '';
+                    updateProgress();
+                }, (msg) => {
+                    showToast(msg, true);
+                    document.querySelector('#idZone span').innerText = '🪪 کرتە بکە بۆ هەڵبژاردن';
+                    idCardPhotoBase64 = null;
+                    idCardPhotoInput.value = '';
+                });
             });
 
             const requiredFieldsList = ['fullName', 'address', 'phone', 'nearestLocation', 'age', 'hasExperience', 'communicationSkill', 'education', 'languages'];
@@ -585,6 +664,8 @@
                 if (!commSel) { errors.communicationSkill = "توانای پەیوەندی پێویستە"; isValid = false; }
                 if (!education.value.trim()) { errors.education = "ئاستی خوێندن پێویستە"; isValid = false; }
                 if (!languages.value.trim()) { errors.languages = "زمانەکان پێویستن"; isValid = false; }
+                if (!personalPhotoBase64) { errors.personalPhoto = "وێنەی تاکەکەسی پێویستە"; isValid = false; }
+                if (!idCardPhotoBase64) { errors.idCardPhoto = "وێنەی کارتی نیشتیمانی پێویستە"; isValid = false; }
                 if (hasExpSel && hasExperienceRadios[0].checked) {
                     if (!previousWorkplace.value.trim()) { errors.previousWorkplace = "شوێنی کاری پێشوو پێویستە"; isValid = false; }
                     if (!leaveReason.value.trim()) { errors.leaveReason = "هۆکاری جێهێشتن پێویستە"; isValid = false; }
